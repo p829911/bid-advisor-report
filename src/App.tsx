@@ -28,6 +28,7 @@ import {
   YAxis,
 } from 'recharts';
 import {REGIONS, SUMMARY as S} from './data';
+import {HABIT} from './habit';
 
 type Region = (typeof REGIONS)[number];
 
@@ -247,7 +248,7 @@ export default function App() {
     <VStack gap={8}>
       <VStack gap={3}>
         <Text type="supporting" color="secondary">
-          입찰가 어드바이저 · 데이터 리포트 #2 · 2026-11-24
+          입찰가 어드바이저 · 데이터 리포트 #3 · 2026-11-24
         </Text>
         <Heading level={1}>고객 A 투찰 기록: 지역별 분석과 검증</Heading>
         <Text type="body" color="secondary">
@@ -292,6 +293,14 @@ export default function App() {
             <ListItem
               label={
                 <>
+                  관내 입찰을 업체별 습관 모델로 다시 시험해도 2024년 이후 <B>{HABIT.habit}건 vs 고객 A 실제 {HABIT.actual}건</B>이었어요. 고객 A는 이미 관내에서 1순위 비율이 가장 높아요(
+                  {pct(HABIT.actual, HABIT.n)}, 공평한 몫 약 {HABIT.fairShare}%). → <B>투찰가 추천 개발은 멈추는 걸 권해요.</B>
+                </>
+              }
+            />
+            <ListItem
+              label={
+                <>
                   실제보다 낮게 쓴 {S.under}건은 {S.underAllBelow ? '전부' : '대부분'} 하한 미달이었어요. 구조상 피할 수 없는 결과라, 하한 미달 자체는 '공격적으로 쓴 대가'로 봐야 해요.
                 </>
               }
@@ -316,7 +325,56 @@ export default function App() {
       </VStack>
 
       <VStack gap={4}>
-        <SectionHead n="2" title="어떻게 계산했나" />
+        <SectionHead
+          n="2"
+          title="관내 입찰 재검증: 업체별 습관 모델"
+          desc={`관내는 경쟁 업체가 고정이라, 업체마다 '최근 어디에 쓰는지·얼마나 자주 들어오는지'를 따로 추적해 1순위 확률이 가장 높은 값을 고르는 방식을 2024년 이후 ${HABIT.n}건으로 다시 시험했어요.`}
+        />
+        <Grid columns={{minWidth: 160, max: 4, repeat: 'fit'}} gap={4}>
+          <Metric label="고객 A 실제 선택" value={`${HABIT.actual}건`} hint={`1순위 ${pct(HABIT.actual, HABIT.n)}`} />
+          <Metric label="업체별 습관 모델" value={`${HABIT.habit}건`} hint={`실제 대비 ${sign(HABIT.diff)}건 (95% ${sign(HABIT.lo)}~${sign(HABIT.hi)})`} />
+          <Metric label="빈 구간 찾기" value={`${HABIT.best}건`} hint="리포트 1번 방식" />
+          <Metric label="사후 최적 고정값" value={`${HABIT.oracle}건`} hint={`정답을 알고 ${HABIT.oracleX}%로 고정했을 때`} />
+        </Grid>
+        <Grid columns={{minWidth: 320, max: 2, repeat: 'fit'}} gap={4}>
+          <ChartCard
+            title="2024년 이후 업체별 1순위 비율"
+            desc={`같은 공고 안에서 계산. 보통 ${HABIT.bidders}곳이 들어와서 공평한 몫은 약 ${HABIT.fairShare}%(점선). 고객 A가 이미 가장 높아요.`}>
+            <ResponsiveContainer width="100%" height={240}>
+              <BarChart data={HABIT.shares} layout="vertical" margin={{top: 4, right: 16, left: 8, bottom: 4}}>
+                <CartesianGrid horizontal={false} stroke={C.grid} />
+                <XAxis type="number" tick={tick} axisLine={false} tickLine={false} unit="%" domain={[0, 40]} />
+                <YAxis type="category" dataKey="name" tick={tick} axisLine={false} tickLine={false} width={72} />
+                <Tooltip />
+                <Bar isAnimationActive={false} dataKey="rate" fill={C.blue} name="1순위 비율(%)" radius={[0, 4, 4, 0]} />
+                <ReferenceLine x={HABIT.fairShare} stroke={C.purple} strokeDasharray="4 4" />
+              </BarChart>
+            </ResponsiveContainer>
+          </ChartCard>
+          <ChartCard title="연도별 1순위 건수(관내)" desc="2023년까지는 두 데이터 방식이 크게 앞섰지만, 2024년부터는 고객 A 실제 선택과 비슷하거나 낮아요.">
+            <ResponsiveContainer width="100%" height={240}>
+              <BarChart data={HABIT.years} margin={{top: 8, right: 8, left: 0, bottom: 4}}>
+                <CartesianGrid vertical={false} stroke={C.grid} />
+                <XAxis dataKey="year" tick={tick} axisLine={false} tickLine={false} />
+                <YAxis tick={tick} axisLine={false} tickLine={false} width={28} />
+                <Tooltip />
+                <Legend wrapperStyle={legend} />
+                <Bar isAnimationActive={false} dataKey="actual" fill={C.orange} name="고객 A 실제" radius={[3, 3, 0, 0]} />
+                <Bar isAnimationActive={false} dataKey="habit" fill={C.purple} name="업체별 습관" radius={[3, 3, 0, 0]} />
+                <Bar isAnimationActive={false} dataKey="best" fill={C.blue} name="빈 구간 찾기" radius={[3, 3, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </ChartCard>
+        </Grid>
+        <Banner
+          status="error"
+          title="최종 판정: 가격 추천으로 지금보다 낫게 만들기는 어려워요"
+          description={`습관 모델은 예측 자체는 크게 빗나가지 않았지만(예상 1순위 확률 ${HABIT.predicted}% vs 실제 ${HABIT.realized}%), 고객 A 실제 선택보다 ${Math.abs(HABIT.diff)}건 적었어요. 정답을 미리 알고 하나의 값으로 고정했어도 ${HABIT.oracle}건이라 ${HABIT.actual}건에 못 미쳐요. 지금 관내 시장은 모두가 실제 사정률 근처에 붙어 쓰는 '운 나누기' 상태이고, 고객 A는 그 안에서 이미 가장 많이 이기고 있어요.`}
+        />
+      </VStack>
+
+      <VStack gap={4}>
+        <SectionHead n="3" title="어떻게 계산했나" />
         <Card>
           <List density="compact" listStyle="disc">
             <ListItem label={<>투찰금액을 '기초금액 × 하한율의 몇 %로 썼나'로 바꾸면, 1순위 = 실제 사정률 이상인 값 중 가장 작은 값을 쓴 업체예요.</>} />
@@ -329,12 +387,12 @@ export default function App() {
       </VStack>
 
       <VStack gap={4}>
-        <SectionHead n="3" title="다음 단계 제안" />
+        <SectionHead n="4" title="권하는 방향" />
         <Card>
           <List density="compact" listStyle="decimal">
-            <ListItem label={<>관내 입찰: 경쟁 업체가 3~4곳으로 고정이라, 업체별로 '요즘 어디에 쓰는지'를 따로 추적하는 방식(업체별 습관 모델)을 한 번 더 검증해요. 이것도 최근 기간에서 고객 A 실제 선택을 못 이기면 개발은 멈추는 게 맞아요.</>} />
-            <ListItem label={<>지역입찰: 값을 고르는 도구는 효과가 없다고 보고, 공고 찾기·마감 알림·투찰 기록 정리 같은 시간 절약 쪽만 남겨요.</>} />
-            <ListItem label={<>새 기록은 매일 공개 개찰 결과로 쌓여서, 판이 다시 바뀌는지도 계속 볼 수 있어요.</>} />
+            <ListItem label={<>투찰가 추천 프로그램 개발은 여기서 멈추는 걸 권해요. 두 시장 모두 지금 방식보다 1순위를 늘린다는 근거가 없어요.</>} />
+            <ListItem label={<>관내 입찰은 지금처럼 하되, 경쟁 업체들이 다시 값을 크게 바꾸면(2023년 이전처럼 빈자리가 생기면) 그때 다시 볼 가치가 있어요. 이건 공개 개찰 결과로 가볍게 지켜볼 수 있어요.</>} />
+            <ListItem label={<>도움이 될 수 있는 건 가격이 아니라 시간이에요: 공고 찾기·마감 알림·투찰 기록 자동 정리. 필요하면 이 범위로 따로 이야기해요.</>} />
           </List>
         </Card>
         <Text type="supporting" color="secondary">

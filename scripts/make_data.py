@@ -15,7 +15,7 @@ BIZ = '4158146420'
 REG = {'완도 관내': ('local', '관내 입찰', '우리 군 업체만 참여'), '전남 지역': ('wide', '도 단위 지역입찰', '도 안 업체 누구나 참여')}
 
 A = load_client_csv(SRC)
-fill_from_db(A, DB, BIZ)
+FILL = fill_from_db(A, DB, BIZ)
 rows = {r['공고번호'].split('-')[0]: r for r in csv.DictReader(open(SRC, encoding='utf-8-sig'))}
 con = sqlite3.connect(DB)
 
@@ -81,7 +81,7 @@ for key, (rid, label, desc) in REG.items():
 below = [a for a in A if a.own < a.s]
 summary = {'total': len(A), 'from': min(a.date for a in A), 'to': max(a.date for a in A),
            'win': sum(a.own_win for a in A), 'under': len(below), 'underAllBelow': all(res_of(a) == '하한미달' for a in below),
-           'checked': '27/27'}
+           'checked': f"{FILL['match']}/{FILL['checked']}"}
 ts = '// 자동 생성(scripts/make_data.py) — 실제 기록의 익명 집계. 업체·발주처·지명 없음.\n'
 ts += f'export const SUMMARY = {json.dumps(summary, ensure_ascii=False, indent=1)} as const;\n'
 ts += f'export const REGIONS = {json.dumps(regions, ensure_ascii=False, indent=1)};\n'

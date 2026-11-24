@@ -6,7 +6,7 @@ export const SUMMARY = {
  "win": 165,
  "under": 209,
  "underAllBelow": true,
- "checked": "27/27"
+ "checked": "268/268"
 } as const;
 export const REGIONS = [
  {
@@ -19,10 +19,10 @@ export const REGIONS = [
   "under": 92,
   "from": "2018-03-09",
   "to": "2026-11-24",
-  "biddersMedian": 3.0,
+  "biddersMedian": 4,
   "biddersP25": 3,
   "biddersP75": 4,
-  "biddersN": 152,
+  "biddersN": 393,
   "gapMedian": 0.987,
   "sMean": 99.772,
   "sSd": 0.704,
