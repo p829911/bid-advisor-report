@@ -30,6 +30,7 @@ import {
 import {REGIONS, SUMMARY as S} from './data';
 import {HABIT} from './habit';
 import {FINAL} from './final';
+import Easy from './Easy';
 
 type Region = (typeof REGIONS)[number];
 
@@ -243,6 +244,7 @@ function RegionView({r}: {r: Region}) {
 export default function App() {
   const isMobile = useMediaQuery('(max-width: 768px)', true);
   const [rid, setRid] = useState<string>('local');
+  const [view, setView] = useState<string>('easy');
   const region = REGIONS.find(r => r.id === rid)!;
 
   const body = (
@@ -457,7 +459,30 @@ export default function App() {
         <LayoutContent role="main" isScrollable={false} padding={isMobile ? 4 : 8}>
           <Center axis="horizontal">
             <Section variant="transparent" width="100%" maxWidth={1080} padding={0}>
-              {body}
+              <VStack gap={6}>
+                <SegmentedControl label="보기" value={view} onChange={v => setView(v as string)} layout={isMobile ? 'fill' : undefined}>
+                  <SegmentedControlItem value="easy" label="쉽게 보기" />
+                  <SegmentedControlItem value="detail" label="상세 분석" />
+                </SegmentedControl>
+                {view === 'easy' ? (
+                  <VStack gap={8}>
+                    <VStack gap={3}>
+                      <Text type="supporting" color="secondary">
+                        입찰가 어드바이저 · 결과 요약 · 2026-11-24
+                      </Text>
+                      <Heading level={1}>투찰 기록 분석 결과, 쉽게 정리했어요</Heading>
+                      <Banner
+                        status="info"
+                        title="실제 기록을 익명으로 정리한 페이지예요"
+                        description="업체·발주처·지명은 빼고 정리했어요. 1순위는 개찰 1등이라 적격심사 결과에 따라 최종 낙찰과 다를 수 있어요. 낙찰을 보장하는 방법은 없어요. 근거 숫자와 차트는 '상세 분석' 탭에 있어요."
+                      />
+                    </VStack>
+                    <Easy />
+                  </VStack>
+                ) : (
+                  body
+                )}
+              </VStack>
             </Section>
           </Center>
         </LayoutContent>
