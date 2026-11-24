@@ -29,6 +29,7 @@ import {
 } from 'recharts';
 import {REGIONS, SUMMARY as S} from './data';
 import {HABIT} from './habit';
+import {FINAL} from './final';
 
 type Region = (typeof REGIONS)[number];
 
@@ -248,60 +249,51 @@ export default function App() {
     <VStack gap={8}>
       <VStack gap={3}>
         <Text type="supporting" color="secondary">
-          입찰가 어드바이저 · 데이터 리포트 #3 · 2026-11-24
+          입찰가 어드바이저 · 최종 정리 리포트 · 2026-11-24
         </Text>
-        <Heading level={1}>고객 A 투찰 기록: 지역별 분석과 검증</Heading>
+        <Heading level={1}>고객 A 투찰 기록 10년: 무엇이 통하고 무엇이 안 통하나</Heading>
         <Text type="body" color="secondary">
-          고객 A(해양환경 분야)가 {S.from.slice(0, 7)}부터 {S.to.slice(0, 7)}까지 낸 투찰 {S.total}건을 두 시장으로 나눠 봤어요. 우리 군 업체만 들어오는
-          관내 입찰과, 도 안 업체 누구나 들어오는 지역입찰은 경쟁 구조가 완전히 달라서 전략도 따로 봐야 해요.
+          고객 A(해양환경 분야)가 {S.from.slice(0, 7)}부터 {S.to.slice(0, 7)}까지 낸 투찰 {S.total}건과 공공데이터포털의 공개 개찰 결과로, '투찰 가격을 데이터로 정하면 더 이기나'와
+          '어디서 더 이길 수 있나'를 검증했어요.
         </Text>
         <Banner
           status="info"
           title="실제 기록을 익명으로 정리한 페이지예요"
-          description="업체·발주처·지명은 빼고 '경쟁사 A'처럼 바꿨어요. 1순위는 개찰 1등이라 적격심사 결과에 따라 최종 낙찰과 다를 수 있어요. 낙찰을 보장하는 방법은 없어요."
+          description="업체·발주처·지명은 빼고 '경쟁사 A', '이웃 시·군 A'처럼 바꿨어요. 1순위는 개찰 1등이라 적격심사 결과에 따라 최종 낙찰과 다를 수 있어요. 낙찰을 보장하는 방법은 없어요."
         />
       </VStack>
 
       <Card>
         <VStack gap={3}>
-          <Heading level={3}>결론</Heading>
-          <List density="compact" listStyle="disc">
+          <Heading level={3}>최종 결론</Heading>
+          <List density="compact" listStyle="decimal">
             <ListItem
               label={
                 <>
-                  <B>관내 입찰({local.biddersMedian}곳 경쟁)</B>은 이길 수 있는 폭이 넓고(보통 {local.gapMedian.toFixed(2)}%p) 1순위 비율도 {pct(local.win, local.total)}로 높아요. 다만{' '}
-                  <B>2024년부터 경쟁 업체들이 실제 사정률 쪽으로 바짝 붙어</B> 빈자리가 거의 사라졌어요.
+                  <B>투찰 가격 추천은 하지 않기로 했어요.</B> 네 가지 방식으로 시험했지만 지금 시장에서 고객 A의 실제 선택보다 1순위를 늘린 방법이 없었어요.
                 </>
               }
             />
             <ListItem
               label={
                 <>
-                  <B>지역입찰(보통 {wide.biddersMedian}곳, 많으면 30곳 이상)</B>은 이길 수 있는 폭이 {wide.gapMedian}%p로 좁아 사실상 추첨이에요. 1순위 비율 {pct(wide.win, wide.total)}, 하한 미달{' '}
-                  {pct(wide.under, wide.total)}.
+                  <B>관내 입찰</B>({local.biddersMedian}곳 경쟁)에서 고객 A는 이미 1순위 비율이 가장 높아요({pct(HABIT.actual, HABIT.n)}, 똑같이 나누면 약 {HABIT.fairShare}%). 2024년부터는 모두가 실제 사정률
+                  바로 위에 붙어 쓰는 '운 나누기' 판이에요.
                 </>
               }
             />
             <ListItem
               label={
                 <>
-                  데이터 방식(빈 구간 찾기)은 <B>두 시장 모두 지금은 고객 A 실제 선택보다 낫다고 확인되지 않았어요.</B> 관내는 2023년까지만 크게 앞섰고(앞 절반 {sign(local.backtest.bestVsActual.first)}건), 최근에는{' '}
-                  {sign(local.backtest.bestVsActual.second)}건. 지역입찰은 내내 뒤졌어요({sign(wide.backtest.bestVsActual.diff)}건).
+                  <B>지역입찰</B>(보통 {wide.biddersMedian}곳)은 이길 수 있는 폭이 {wide.gapMedian}%p라 사실상 추첨이에요.
                 </>
               }
             />
             <ListItem
               label={
                 <>
-                  관내 입찰을 업체별 습관 모델로 다시 시험해도 2024년 이후 <B>{HABIT.habit}건 vs 고객 A 실제 {HABIT.actual}건</B>이었어요. 고객 A는 이미 관내에서 1순위 비율이 가장 높아요(
-                  {pct(HABIT.actual, HABIT.n)}, 공평한 몫 약 {HABIT.fairShare}%). → <B>투찰가 추천 개발은 멈추는 걸 권해요.</B>
-                </>
-              }
-            />
-            <ListItem
-              label={
-                <>
-                  실제보다 낮게 쓴 {S.under}건은 {S.underAllBelow ? '전부' : '대부분'} 하한 미달이었어요. 구조상 피할 수 없는 결과라, 하한 미달 자체는 '공격적으로 쓴 대가'로 봐야 해요.
+                  <B>남은 기회는 '어느 공고에 들어가느냐'예요.</B> 참여 업체가 2~6곳뿐인데 고객 A가 들어가지 않은 비슷한 공고가 {FINAL.from}~{FINAL.to} 사이 {FINAL.missN}건 있었고, 들어갔다면
+                  1순위가 약 {FINAL.missEv}건 더 나올 수 있었어요(같은 기간 실제 1순위 {FINAL.own25Win}건). 단, 참가 자격 확인 전 추정치예요.
                 </>
               }
             />
@@ -312,7 +304,7 @@ export default function App() {
       <Divider />
 
       <VStack gap={4}>
-        <SectionHead n="1" title="시장별 상세" desc="위에서 시장을 고르면 아래 숫자·차트가 바뀌어요." />
+        <SectionHead n="1" title="시장별 현황" desc="우리 군 업체만 들어오는 관내 입찰과, 도 안 업체 누구나 들어오는 지역입찰은 경쟁 구조가 완전히 달라요. 위에서 시장을 고르면 숫자·차트가 바뀌어요." />
         <SegmentedControl label="시장" value={rid} onChange={v => setRid(v as string)} layout={isMobile ? 'fill' : undefined}>
           {REGIONS.map(r => (
             <SegmentedControlItem key={r.id} value={r.id} label={`${r.label} · ${r.total}건`} />
@@ -325,21 +317,56 @@ export default function App() {
       </VStack>
 
       <VStack gap={4}>
-        <SectionHead
-          n="2"
-          title="관내 입찰 재검증: 업체별 습관 모델"
-          desc={`관내는 경쟁 업체가 고정이라, 업체마다 '최근 어디에 쓰는지·얼마나 자주 들어오는지'를 따로 추적해 1순위 확률이 가장 높은 값을 고르는 방식을 2024년 이후 ${HABIT.n}건으로 다시 시험했어요.`}
-        />
-        <Grid columns={{minWidth: 160, max: 4, repeat: 'fit'}} gap={4}>
-          <Metric label="고객 A 실제 선택" value={`${HABIT.actual}건`} hint={`1순위 ${pct(HABIT.actual, HABIT.n)}`} />
-          <Metric label="업체별 습관 모델" value={`${HABIT.habit}건`} hint={`실제 대비 ${sign(HABIT.diff)}건 (95% ${sign(HABIT.lo)}~${sign(HABIT.hi)})`} />
-          <Metric label="빈 구간 찾기" value={`${HABIT.best}건`} hint="리포트 1번 방식" />
-          <Metric label="사후 최적 고정값" value={`${HABIT.oracle}건`} hint={`정답을 알고 ${HABIT.oracleX}%로 고정했을 때`} />
+        <SectionHead n="2" title="가격 방식 검증: 모두 안 통했어요" desc="관내 입찰 2024년 이후 기준. 공고마다 그 이전 기록만 보고 정한 뒤 실제 결과에 대입했어요." />
+        <Grid columns={{minWidth: 230, max: 2, repeat: 'fit'}} gap={4}>
+          <Card>
+            <VStack gap={2}>
+              <HStack gap={2} vAlign="center">
+                <Badge variant="error" label="안 통함" />
+                <Heading level={4}>① 빈 구간 찾기</Heading>
+              </HStack>
+              <Text type="body">
+                과거에 '그 값이었으면 1순위였을 횟수'가 가장 많은 값. 2023년까지는 크게 앞섰지만 2024년부터 {HABIT.best}건(실제 {HABIT.actual}건).
+              </Text>
+            </VStack>
+          </Card>
+          <Card>
+            <VStack gap={2}>
+              <HStack gap={2} vAlign="center">
+                <Badge variant="error" label="안 통함" />
+                <Heading level={4}>② 업체별 습관 모델</Heading>
+              </HStack>
+              <Text type="body">
+                경쟁 업체마다 최근 쓴 값·참여 빈도로 1순위 확률이 가장 높은 값. {HABIT.habit}건(실제 {HABIT.actual}건). 예측은 맞았지만(예상 {HABIT.predicted}% vs 실제 {HABIT.realized}%) 이길 자리가 없었어요.
+              </Text>
+            </VStack>
+          </Card>
+          <Card>
+            <VStack gap={2}>
+              <HStack gap={2} vAlign="center">
+                <Badge variant="error" label="안 통함" />
+                <Heading level={4}>③ 추첨 번호 고르기</Heading>
+              </HStack>
+              <Text type="body">
+                15개 예비가격의 번호와 가격 사이 관계 없음(순위상관 {FINAL.picksCorr}, {FINAL.picksN}건). 어떤 번호를 골라도 예정가격 방향을 바꿀 수 없어요.
+              </Text>
+            </VStack>
+          </Card>
+          <Card>
+            <VStack gap={2}>
+              <HStack gap={2} vAlign="center">
+                <Badge variant="warning" label="불가능" />
+                <Heading level={4}>④ 경쟁 업체 값 예측</Heading>
+              </HStack>
+              <Text type="body">
+                경쟁사 값을 미리 정확히 안다면 {FINAL.boundN}건 중 약 {FINAL.boundExp}건까지 가능(실제 {FINAL.actual}건). 하지만 경쟁사 값의 흔들림은 직전 값·승패·사정률·금액 어느 것과도 상관이{' '}
+                {FINAL.predictMaxCorr} 이하라 예측이 안 돼요. 마감 전에 남의 가격을 아는 건 담합이라 불법이에요.
+              </Text>
+            </VStack>
+          </Card>
         </Grid>
         <Grid columns={{minWidth: 320, max: 2, repeat: 'fit'}} gap={4}>
-          <ChartCard
-            title="2024년 이후 업체별 1순위 비율"
-            desc={`같은 공고 안에서 계산. 보통 ${HABIT.bidders}곳이 들어와서 공평한 몫은 약 ${HABIT.fairShare}%(점선). 고객 A가 이미 가장 높아요.`}>
+          <ChartCard title="2024년 이후 관내 업체별 1순위 비율" desc={`같은 공고 안에서 계산. 보통 ${HABIT.bidders}곳이 들어와 똑같이 나누면 약 ${HABIT.fairShare}%(점선).`}>
             <ResponsiveContainer width="100%" height={240}>
               <BarChart data={HABIT.shares} layout="vertical" margin={{top: 4, right: 16, left: 8, bottom: 4}}>
                 <CartesianGrid horizontal={false} stroke={C.grid} />
@@ -351,7 +378,7 @@ export default function App() {
               </BarChart>
             </ResponsiveContainer>
           </ChartCard>
-          <ChartCard title="연도별 1순위 건수(관내)" desc="2023년까지는 두 데이터 방식이 크게 앞섰지만, 2024년부터는 고객 A 실제 선택과 비슷하거나 낮아요.">
+          <ChartCard title="연도별 1순위 건수(관내)" desc="2023년까지는 데이터 방식이 크게 앞섰지만, 경쟁 업체들이 값을 바꾼 2024년부터는 고객 A 실제와 비슷하거나 낮아요.">
             <ResponsiveContainer width="100%" height={240}>
               <BarChart data={HABIT.years} margin={{top: 8, right: 8, left: 0, bottom: 4}}>
                 <CartesianGrid vertical={false} stroke={C.grid} />
@@ -366,33 +393,70 @@ export default function App() {
             </ResponsiveContainer>
           </ChartCard>
         </Grid>
+      </VStack>
+
+      <VStack gap={4}>
+        <SectionHead n="3" title="남은 기회: 공고 선택" desc="가격으로는 못 넘지만, 경쟁이 적은 공고에 더 들어가면 같은 운으로도 1순위가 늘어요." />
+        <Grid columns={{minWidth: 170, max: 4, repeat: 'fit'}} gap={4}>
+          <Metric label="같은 품목 공고(수집분)" value={`${FINAL.coreTotal}건`} hint={`${FINAL.from} ~ ${FINAL.to}, 고객 A 참여 ${FINAL.coreEntered}건`} />
+          <Metric label="놓친 경쟁 적은 공고" value={`${FINAL.missN}건`} hint="참여 2~6곳 · 도 안 · 평소 경쟁 업체 2곳+ 참여" />
+          <Metric label="들어갔다면 1순위(추정)" value={`약 ${FINAL.missEv}건`} hint="참여 업체끼리 똑같이 나눈다고 가정" />
+          <Metric label="같은 기간 실제 1순위" value={`${FINAL.own25Win}건`} hint={`투찰 ${FINAL.own25}건 중`} />
+        </Grid>
+        <Grid columns={{minWidth: 320, max: 2, repeat: 'fit'}} gap={4}>
+          <ChartCard title="놓친 공고: 발주처별" desc="파랑 = 공고 수, 주황 = 들어갔다면 추정 1순위. 관내 공고도 몇 건 있었어요.">
+            <ResponsiveContainer width="100%" height={260}>
+              <BarChart data={FINAL.agencies} layout="vertical" margin={{top: 4, right: 16, left: 8, bottom: 4}}>
+                <CartesianGrid horizontal={false} stroke={C.grid} />
+                <XAxis type="number" tick={tick} axisLine={false} tickLine={false} />
+                <YAxis type="category" dataKey="name" tick={tick} axisLine={false} tickLine={false} width={92} />
+                <Tooltip />
+                <Legend wrapperStyle={legend} />
+                <Bar isAnimationActive={false} dataKey="n" fill={C.blue} name="공고 수" radius={[0, 4, 4, 0]} />
+                <Bar isAnimationActive={false} dataKey="ev" fill={C.orange} name="추정 1순위" radius={[0, 4, 4, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </ChartCard>
+          <ChartCard title="놓친 공고: 참여 업체 수" desc="대부분 2~4곳만 들어온 공고예요.">
+            <ResponsiveContainer width="100%" height={260}>
+              <BarChart data={FINAL.byBidders} margin={{top: 8, right: 8, left: 0, bottom: 4}}>
+                <CartesianGrid vertical={false} stroke={C.grid} />
+                <XAxis dataKey="n" tick={tick} axisLine={false} tickLine={false} />
+                <YAxis tick={tick} axisLine={false} tickLine={false} width={28} />
+                <Tooltip />
+                <Bar isAnimationActive={false} dataKey="cnt" fill={C.teal} name="공고 수" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </ChartCard>
+        </Grid>
         <Banner
-          status="error"
-          title="최종 판정: 가격 추천으로 지금보다 낫게 만들기는 어려워요"
-          description={`습관 모델은 예측 자체는 크게 빗나가지 않았지만(예상 1순위 확률 ${HABIT.predicted}% vs 실제 ${HABIT.realized}%), 고객 A 실제 선택보다 ${Math.abs(HABIT.diff)}건 적었어요. 정답을 미리 알고 하나의 값으로 고정했어도 ${HABIT.oracle}건이라 ${HABIT.actual}건에 못 미쳐요. 지금 관내 시장은 모두가 실제 사정률 근처에 붙어 쓰는 '운 나누기' 상태이고, 고객 A는 그 안에서 이미 가장 많이 이기고 있어요.`}
+          status="warning"
+          title="아직 확인 전인 것"
+          description="이웃 시·군 공고는 그 지역 업체만 들어올 수 있게 제한됐을 수 있고, 면허 조건·거리·섬 지역 수익성·처리 능력 때문에 일부러 안 들어간 것일 수도 있어요. 참가 가능 지역·면허는 입찰공고정보 API로 확인 중이고, 나머지는 고객 A 확인이 필요해요. 이 결과에 따라 추정치는 크게 줄 수 있어요."
         />
       </VStack>
 
       <VStack gap={4}>
-        <SectionHead n="3" title="어떻게 계산했나" />
+        <SectionHead n="4" title="어떻게 계산했나" />
         <Card>
           <List density="compact" listStyle="disc">
             <ListItem label={<>투찰금액을 '기초금액 × 하한율의 몇 %로 썼나'로 바꾸면, 1순위 = 실제 사정률 이상인 값 중 가장 작은 값을 쓴 업체예요.</>} />
             <ListItem label={<>그래서 다른 값을 썼을 때 1순위였는지는 '실제 사정률 이상, 바로 위 업체 값 미만'인지로 판정할 수 있어요. 바로 위 업체 값은 기록의 1순위 값이나 공개 개찰 결과(공공데이터포털)에서 가져왔어요.</>} />
             <ListItem label={<>{`이 판정을 공개 개찰 결과 전체 투찰 목록과 맞춰 보니 ${S.checked} 일치했어요.`}</>} />
-            <ListItem label={<>빈 구간 찾기 = 같은 시장 직전 기록(최대 200건)에서 '그 값이었으면 1순위였을 횟수'가 가장 많은 값을 고르는 방식이에요.</>} />
+            <ListItem label={<>놓친 공고: 해양쓰레기·폐합성수지·부표·스티로폼·영농폐기물 등 같은 품목, 수의시담·건설폐기물·설계·감리 제외, 고객 A와 3번 이상 같이 들어온 업체({FINAL.peers}곳) 중 2곳 이상이 참여한 도 안 공고.</>} />
             <ListItem label={<>가정: 고객 A가 값을 바꿔도 다른 업체 투찰은 그대로, 고객 A가 고른 추첨 번호의 영향은 무시, 적격심사 점수는 무시.</>} />
           </List>
         </Card>
       </VStack>
 
       <VStack gap={4}>
-        <SectionHead n="4" title="권하는 방향" />
+        <SectionHead n="5" title="다음 단계" />
         <Card>
           <List density="compact" listStyle="decimal">
-            <ListItem label={<>투찰가 추천 프로그램 개발은 여기서 멈추는 걸 권해요. 두 시장 모두 지금 방식보다 1순위를 늘린다는 근거가 없어요.</>} />
-            <ListItem label={<>관내 입찰은 지금처럼 하되, 경쟁 업체들이 다시 값을 크게 바꾸면(2023년 이전처럼 빈자리가 생기면) 그때 다시 볼 가치가 있어요. 이건 공개 개찰 결과로 가볍게 지켜볼 수 있어요.</>} />
-            <ListItem label={<>도움이 될 수 있는 건 가격이 아니라 시간이에요: 공고 찾기·마감 알림·투찰 기록 자동 정리. 필요하면 이 범위로 따로 이야기해요.</>} />
+            <ListItem label={<>놓친 공고의 참가 자격(지역·면허)을 확인해 진짜 들어갈 수 있었던 공고만 다시 세요.</>} />
+            <ListItem label={<>고객 A에게 '왜 안 들어갔는지'(거리·수익성·처리 능력 등)를 확인해요.</>} />
+            <ListItem label={<>둘 다 괜찮으면: 들어갈 만한 공고를 매일 찾아 알려주는 알림(공고 선택 도우미)을 검토해요. 가격은 추천하지 않아요.</>} />
+            <ListItem label={<>관내 경쟁 업체들이 다시 넓게 흩어지는지(2023년 이전처럼)는 공개 개찰 결과로 계속 지켜봐요.</>} />
           </List>
         </Card>
         <Text type="supporting" color="secondary">
