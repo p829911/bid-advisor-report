@@ -79,5 +79,16 @@ export const FINAL = {
    "n": "6곳",
    "cnt": 1
   }
- ]
+ ],
+ "okN": 8,
+ "okEv": 2.1,
+ "okLocal": 7,
+ "okYears": {
+  "2025": 5,
+  "2026": 3
+ },
+ "suspectN": 77,
+ "wideHave": 39,
+ "wideWith": 34,
+ "wandoFirms": 8
 };

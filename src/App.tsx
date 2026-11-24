@@ -292,8 +292,8 @@ export default function App() {
             <ListItem
               label={
                 <>
-                  <B>남은 기회는 '어느 공고에 들어가느냐'예요.</B> 참여 업체가 2~6곳뿐인데 고객 A가 들어가지 않은 비슷한 공고가 {FINAL.from}~{FINAL.to} 사이 {FINAL.missN}건 있었고, 들어갔다면
-                  1순위가 약 {FINAL.missEv}건 더 나올 수 있었어요(같은 기간 실제 1순위 {FINAL.own25Win}건). 단, 참가 자격 확인 전 추정치예요.
+                  <B>'놓친 공고'도 생각보다 작아요.</B> 참여 2~6곳인 비슷한 공고 중 고객 A가 안 들어간 {FINAL.missN}건을 찾았지만, {FINAL.suspectN}건은 다른 시·군 업체만 들어올 수 있는 공고로 보여요. 실제로
+                  들어갈 수 있었던 건 약 {FINAL.okN}건(관내 {FINAL.okLocal}건)이고, 들어갔다면 1순위는 약 {FINAL.okEv}건 더였어요(같은 기간 실제 1순위 {FINAL.own25Win}건).
                 </>
               }
             />
@@ -396,43 +396,27 @@ export default function App() {
       </VStack>
 
       <VStack gap={4}>
-        <SectionHead n="3" title="남은 기회: 공고 선택" desc="가격으로는 못 넘지만, 경쟁이 적은 공고에 더 들어가면 같은 운으로도 1순위가 늘어요." />
+        <SectionHead n="3" title="공고 선택: 놓친 공고는 거의 없었어요" desc="가격으로는 못 넘으니, 경쟁이 적은 공고에 더 들어갈 여지가 있는지 봤어요." />
         <Grid columns={{minWidth: 170, max: 4, repeat: 'fit'}} gap={4}>
-          <Metric label="같은 품목 공고(수집분)" value={`${FINAL.coreTotal}건`} hint={`${FINAL.from} ~ ${FINAL.to}, 고객 A 참여 ${FINAL.coreEntered}건`} />
-          <Metric label="놓친 경쟁 적은 공고" value={`${FINAL.missN}건`} hint="참여 2~6곳 · 도 안 · 평소 경쟁 업체 2곳+ 참여" />
-          <Metric label="들어갔다면 1순위(추정)" value={`약 ${FINAL.missEv}건`} hint="참여 업체끼리 똑같이 나눈다고 가정" />
-          <Metric label="같은 기간 실제 1순위" value={`${FINAL.own25Win}건`} hint={`투찰 ${FINAL.own25}건 중`} />
+          <Metric label="놓친 경쟁 적은 공고(1차)" value={`${FINAL.missN}건`} hint={`${FINAL.from} ~ ${FINAL.to} · 참여 2~6곳 · 같은 품목`} />
+          <Metric label="다른 시·군 전용으로 보임" value={`${FINAL.suspectN}건`} hint="관내 업체가 한 곳도 안 들어옴" />
+          <Metric label="들어갈 수 있었던 공고" value={`약 ${FINAL.okN}건`} hint={`관내 ${FINAL.okLocal}건 포함`} />
+          <Metric label="들어갔다면 1순위(추정)" value={`약 ${FINAL.okEv}건`} hint={`같은 기간 실제 1순위 ${FINAL.own25Win}건`} />
         </Grid>
-        <Grid columns={{minWidth: 320, max: 2, repeat: 'fit'}} gap={4}>
-          <ChartCard title="놓친 공고: 발주처별" desc="파랑 = 공고 수, 주황 = 들어갔다면 추정 1순위. 관내 공고도 몇 건 있었어요.">
-            <ResponsiveContainer width="100%" height={260}>
-              <BarChart data={FINAL.agencies} layout="vertical" margin={{top: 4, right: 16, left: 8, bottom: 4}}>
-                <CartesianGrid horizontal={false} stroke={C.grid} />
-                <XAxis type="number" tick={tick} axisLine={false} tickLine={false} />
-                <YAxis type="category" dataKey="name" tick={tick} axisLine={false} tickLine={false} width={92} />
-                <Tooltip />
-                <Legend wrapperStyle={legend} />
-                <Bar isAnimationActive={false} dataKey="n" fill={C.blue} name="공고 수" radius={[0, 4, 4, 0]} />
-                <Bar isAnimationActive={false} dataKey="ev" fill={C.orange} name="추정 1순위" radius={[0, 4, 4, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </ChartCard>
-          <ChartCard title="놓친 공고: 참여 업체 수" desc="대부분 2~4곳만 들어온 공고예요.">
-            <ResponsiveContainer width="100%" height={260}>
-              <BarChart data={FINAL.byBidders} margin={{top: 8, right: 8, left: 0, bottom: 4}}>
-                <CartesianGrid vertical={false} stroke={C.grid} />
-                <XAxis dataKey="n" tick={tick} axisLine={false} tickLine={false} />
-                <YAxis tick={tick} axisLine={false} tickLine={false} width={28} />
-                <Tooltip />
-                <Bar isAnimationActive={false} dataKey="cnt" fill={C.teal} name="공고 수" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </ChartCard>
-        </Grid>
+        <Card>
+          <VStack gap={2}>
+            <Heading level={4}>어떻게 걸렀나</Heading>
+            <List density="compact" listStyle="disc">
+              <ListItem label={<>고객 A가 들어간 도 단위 지역입찰에는 {Math.round((FINAL.wideWith / FINAL.wideHave) * 100)}%({FINAL.wideHave}건 중 {FINAL.wideWith}건)에 다른 관내 업체도 같이 들어왔어요.</>} />
+              <ListItem label={<>그런데 놓친 공고 {FINAL.suspectN}건에는 관내 업체({FINAL.wandoFirms}곳)가 한 곳도 없었어요. 그 시·군 업체만 들어올 수 있게 제한된 공고였을 가능성이 높아요.</>} />
+              <ListItem label={<>남은 {FINAL.okN}건 중 {FINAL.okLocal}건은 관내 공고예요. 섬 지역 공고가 반복해서 빠져 있어, 거리·수익성 때문에 일부러 안 들어간 것인지 확인이 필요해요.</>} />
+            </List>
+          </VStack>
+        </Card>
         <Banner
-          status="warning"
-          title="아직 확인 전인 것"
-          description="이웃 시·군 공고는 그 지역 업체만 들어올 수 있게 제한됐을 수 있고, 면허 조건·거리·섬 지역 수익성·처리 능력 때문에 일부러 안 들어간 것일 수도 있어요. 참가 가능 지역·면허는 입찰공고정보 API로 확인 중이고, 나머지는 고객 A 확인이 필요해요. 이 결과에 따라 추정치는 크게 줄 수 있어요."
+          status="info"
+          title="참가 자격은 아직 추정이에요"
+          description="참가 가능 지역·면허를 공식 데이터(입찰공고정보 API)로 확인하면 숫자가 조금 바뀔 수 있어요. 다만 방향은 같아요: 놓친 공고로 늘릴 수 있는 1순위는 1년에 1~2건 수준이에요."
         />
       </VStack>
 
@@ -453,9 +437,9 @@ export default function App() {
         <SectionHead n="5" title="다음 단계" />
         <Card>
           <List density="compact" listStyle="decimal">
-            <ListItem label={<>놓친 공고의 참가 자격(지역·면허)을 확인해 진짜 들어갈 수 있었던 공고만 다시 세요.</>} />
-            <ListItem label={<>고객 A에게 '왜 안 들어갔는지'(거리·수익성·처리 능력 등)를 확인해요.</>} />
-            <ListItem label={<>둘 다 괜찮으면: 들어갈 만한 공고를 매일 찾아 알려주는 알림(공고 선택 도우미)을 검토해요. 가격은 추천하지 않아요.</>} />
+            <ListItem label={<>참가 자격(지역·면허)을 공식 데이터로 한 번 더 확인해 숫자를 확정해요.</>} />
+            <ListItem label={<>고객 A에게 관내 섬 지역 공고를 왜 안 들어갔는지(거리·수익성·처리 능력 등) 확인해요.</>} />
+            <ListItem label={<>놓친 공고로 늘릴 수 있는 몫이 작아서, 공고 알림 같은 도구도 '1순위를 늘려주는 도구'로는 약해요. 만든다면 시간 절약(공고 찾기·마감 알림·기록 정리)이 목적이에요. 가격은 추천하지 않아요.</>} />
             <ListItem label={<>관내 경쟁 업체들이 다시 넓게 흩어지는지(2023년 이전처럼)는 공개 개찰 결과로 계속 지켜봐요.</>} />
           </List>
         </Card>

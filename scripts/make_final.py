@@ -76,6 +76,20 @@ for r in core:
     if jn and len(bz & peers) >= 2 and ME not in bz:
         miss.append((r, len(bz)))
 ag = collections.Counter((r['dminstt'] or '').split()[-1] for r, _ in miss)
+# 지역 조건 추정: 완도 관내 업체(관내 입찰 3회+)가 하나라도 들어왔거나 완도군 발주면 '지역 OK'
+wcnt = collections.Counter()
+for a in A:
+    if a.region == '완도 관내':
+        for (bz,) in con.execute('select distinct bizno from bids where bid_ntce_no=?', (a.no,)):
+            if bz != ME: wcnt[bz] += 1
+wfirms = {b for b, c in wcnt.items() if c >= 3}
+def bzs(no): return {x[0] for x in con.execute('select distinct bizno from bids where bid_ntce_no=?', (no,))}
+ok = [(r, n) for r, n in miss if '완도' in (r['dminstt'] or '') or (bzs(r['bid_ntce_no']) & wfirms)]
+wide_have = wide_w = 0
+for a in A:
+    if a.region == '전남 지역':
+        b = bzs(a.no)
+        if b: wide_have += 1; wide_w += bool((b - {ME}) & wfirms)
 names = {}
 for i, (k, _) in enumerate(ag.most_common()):
     names[k] = '관내(우리 군)' if k == '완도군' else f'이웃 시·군 {chr(65 + len([n for n in names.values() if n.startswith("이웃")]))}'
@@ -92,6 +106,9 @@ out = {
     'own25': len(own25), 'own25Win': sum(r['결과'] == '1순위' for r in own25),
     'from': months[0] if months else None, 'to': months[-1] if months else None,
     'agencies': agencies, 'byBidders': [{'n': f'{k}곳', 'cnt': pc[k]} for k in sorted(pc)],
+    'okN': len(ok), 'okEv': round(sum(1 / (n + 1) for _, n in ok), 1), 'okLocal': sum(1 for r, _ in ok if '완도' in (r['dminstt'] or '')),
+    'okYears': dict(collections.Counter(r['openg_dt'][:4] for r, _ in ok)), 'suspectN': len(miss) - len(ok),
+    'wideHave': wide_have, 'wideWith': wide_w, 'wandoFirms': len(wfirms),
 }
 open(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'src', 'final.ts'), 'w').write(
     '// 자동 생성(scripts/make_final.py) — 익명 집계\nexport const FINAL = ' + json.dumps(out, ensure_ascii=False, indent=1) + ';\n')
