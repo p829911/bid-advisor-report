@@ -1,3 +1,4 @@
+import {useState} from 'react';
 import type {ReactNode} from 'react';
 import {Layout, LayoutContent} from '@astryxdesign/core/Layout';
 import {HStack, VStack} from '@astryxdesign/core/Stack';
@@ -7,11 +8,10 @@ import {Badge} from '@astryxdesign/core/Badge';
 import {Banner} from '@astryxdesign/core/Banner';
 import {Grid} from '@astryxdesign/core/Grid';
 import {List, ListItem} from '@astryxdesign/core/List';
-import {Table} from '@astryxdesign/core/Table';
-import type {TableColumn} from '@astryxdesign/core/Table';
 import {Center} from '@astryxdesign/core/Center';
 import {Section} from '@astryxdesign/core/Section';
 import {Divider} from '@astryxdesign/core/Divider';
+import {SegmentedControl, SegmentedControlItem} from '@astryxdesign/core/SegmentedControl';
 import {useMediaQuery} from '@astryxdesign/core/hooks';
 import {
   Bar,
@@ -20,25 +20,30 @@ import {
   ComposedChart,
   Legend,
   Line,
+  LineChart,
   ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from 'recharts';
-import {AGENCIES, COMPETITORS, DEVIATION, SAJEONG, SUMMARY as S, YEARS} from './data';
+import {REGIONS, SUMMARY as S} from './data';
+
+type Region = (typeof REGIONS)[number];
 
 const C = {
   blue: 'var(--color-data-categorical-blue)',
   orange: 'var(--color-data-categorical-orange)',
   purple: 'var(--color-data-categorical-purple)',
-  gray: 'var(--color-data-categorical-teal)',
+  teal: 'var(--color-data-categorical-teal)',
   pink: 'var(--color-data-categorical-pink)',
   grid: 'var(--color-border)',
   tick: 'var(--color-text-secondary)',
 };
 const tick = {fontSize: 'var(--font-size-sm)', fill: C.tick};
+const legend = {fontSize: 'var(--font-size-sm)'};
 const pct = (a: number, b: number) => `${((a / b) * 100).toFixed(1)}%`;
+const sign = (n: number) => (n > 0 ? `+${n}` : `${n}`);
 
 function B({children}: {children: ReactNode}) {
   return (
@@ -100,85 +105,194 @@ function SectionHead({n, title, desc}: {n: string; title: string; desc?: string}
   );
 }
 
-type Agency = (typeof AGENCIES)[number];
+const local = REGIONS.find(r => r.id === 'local')!;
+const wide = REGIONS.find(r => r.id === 'wide')!;
+
+function RegionView({r}: {r: Region}) {
+  const bt = r.backtest;
+  const isLocal = r.id === 'local';
+  return (
+    <VStack gap={6}>
+      <Grid columns={{minWidth: 150, max: 5, repeat: 'fit'}} gap={4}>
+        <Metric label="투찰" value={`${r.total}건`} hint={`${r.from.slice(0, 4)} ~ ${r.to.slice(0, 4)}`} />
+        <Metric label="참여 업체 수(보통)" value={`${r.biddersMedian}곳`} hint={`대부분 ${r.biddersP25}~${r.biddersP75}곳 · ${r.biddersN}건 확인`} />
+        <Metric label="1순위" value={pct(r.win, r.total)} hint={`${r.win}건`} />
+        <Metric label="하한 미달" value={pct(r.under, r.total)} hint={`${r.under}건`} />
+        <Metric label="이길 수 있는 폭(보통)" value={`${r.gapMedian.toFixed(2)}%p`} hint="실제 사정률 ~ 바로 위 업체" />
+      </Grid>
+
+      <Grid columns={{minWidth: 320, max: 2, repeat: 'fit'}} gap={4}>
+        <ChartCard title="연도별 결과" desc="막대 = 건수, 선 = 하한 미달 비율(오른쪽 축).">
+          <ResponsiveContainer width="100%" height={260}>
+            <ComposedChart data={r.years} margin={{top: 8, right: 4, left: 0, bottom: 4}}>
+              <CartesianGrid vertical={false} stroke={C.grid} />
+              <XAxis dataKey="year" tick={tick} axisLine={false} tickLine={false} />
+              <YAxis yAxisId="n" tick={tick} axisLine={false} tickLine={false} width={28} />
+              <YAxis yAxisId="r" orientation="right" tick={tick} axisLine={false} tickLine={false} width={40} unit="%" domain={[0, 100]} />
+              <Tooltip />
+              <Legend wrapperStyle={legend} />
+              <Bar isAnimationActive={false} yAxisId="n" dataKey="win" stackId="a" fill={C.blue} name="1순위" />
+              <Bar isAnimationActive={false} yAxisId="n" dataKey="lose" stackId="a" fill={C.teal} name="탈락" />
+              <Bar isAnimationActive={false} yAxisId="n" dataKey="under" stackId="a" fill={C.orange} name="하한 미달" radius={[4, 4, 0, 0]} />
+              <Line isAnimationActive={false} yAxisId="r" type="monotone" dataKey="underRate" stroke={C.pink} strokeWidth={2} dot name="하한 미달 비율" />
+            </ComposedChart>
+          </ResponsiveContainer>
+        </ChartCard>
+        <ChartCard
+          title="사정률 판의 변화"
+          desc="해마다 평균(%). 실제 사정률, 고객 A가 쓴 값, 그리고 '고객 A를 빼고 하한을 넘긴 업체 중 가장 낮은 값'(=고객이 이기려면 그보다 낮게 써야 하는 선). 두 선 사이가 이길 수 있는 자리예요.">
+          <ResponsiveContainer width="100%" height={260}>
+            <LineChart data={r.years} margin={{top: 8, right: 8, left: 0, bottom: 4}}>
+              <CartesianGrid vertical={false} stroke={C.grid} />
+              <XAxis dataKey="year" tick={tick} axisLine={false} tickLine={false} />
+              <YAxis tick={tick} axisLine={false} tickLine={false} width={48} domain={[98.5, 103]} unit="%" />
+              <Tooltip />
+              <Legend wrapperStyle={legend} />
+              <Line isAnimationActive={false} type="monotone" dataKey="sMean" stroke={C.blue} strokeWidth={2} dot name="실제 사정률" />
+              <Line isAnimationActive={false} type="monotone" dataKey="rivalMin" stroke={C.purple} strokeWidth={2} dot name="경쟁 업체 최저 유효값" />
+              <Line isAnimationActive={false} type="monotone" dataKey="ownMean" stroke={C.orange} strokeWidth={2} strokeDasharray="4 3" dot name="고객 A가 쓴 값" />
+            </LineChart>
+          </ResponsiveContainer>
+        </ChartCard>
+      </Grid>
+
+      {isLocal && (
+        <Banner
+          status="warning"
+          title="2024년부터 판이 바뀌었어요"
+          description="2023년까지는 경쟁 업체의 최저 유효값이 101~102%대라 실제 사정률(약 99.8%)과 사이에 1%p 넘는 빈자리가 있었어요. 2024년부터는 100.0~100.3%로 내려와 빈자리가 거의 사라졌어요. 경쟁 업체들이 실제 사정률 쪽으로 바짝 붙어 쓰기 시작한 거예요."
+        />
+      )}
+
+      <Grid columns={{minWidth: 320, max: 2, repeat: 'fit'}} gap={4}>
+        <ChartCard title="써낸 값 − 실제 값에 따른 결과" desc="0보다 왼쪽은 전부 하한 미달. 0 바로 오른쪽에서 1순위가 나오고, 멀어질수록 다른 업체에 밀려요.">
+          <ResponsiveContainer width="100%" height={240}>
+            <BarChart data={r.deviation} margin={{top: 20, right: 8, left: 0, bottom: 4}}>
+              <CartesianGrid vertical={false} stroke={C.grid} />
+              <XAxis dataKey="bin" tick={tick} axisLine={false} tickLine={false} interval={3} />
+              <YAxis tick={tick} axisLine={false} tickLine={false} width={28} />
+              <Tooltip />
+              <Legend wrapperStyle={legend} />
+              <Bar isAnimationActive={false} dataKey="under" stackId="d" fill={C.orange} name="하한 미달" />
+              <Bar isAnimationActive={false} dataKey="lose" stackId="d" fill={C.teal} name="탈락" />
+              <Bar isAnimationActive={false} dataKey="win" stackId="d" fill={C.blue} name="1순위" radius={[3, 3, 0, 0]} />
+              <ReferenceLine x="+0.00" stroke={C.purple} label={{value: '실제 = 써낸 값', fill: C.purple, fontSize: 12, position: 'top'}} />
+            </BarChart>
+          </ResponsiveContainer>
+        </ChartCard>
+        <ChartCard title="1순위를 가져간 업체" desc={`고객 A가 진 ${r.lost}건 중 상위 5곳. 상위 3곳이 ${r.top3Share}%. 업체 이름은 전체 리포트에서 같은 알파벳을 써요.`}>
+          <ResponsiveContainer width="100%" height={240}>
+            <BarChart data={r.competitors} layout="vertical" margin={{top: 4, right: 16, left: 8, bottom: 4}}>
+              <CartesianGrid horizontal={false} stroke={C.grid} />
+              <XAxis type="number" tick={tick} axisLine={false} tickLine={false} />
+              <YAxis type="category" dataKey="name" tick={tick} axisLine={false} tickLine={false} width={72} />
+              <Tooltip />
+              <Bar isAnimationActive={false} dataKey="beat" fill={C.blue} name="이긴 횟수" radius={[0, 4, 4, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </ChartCard>
+      </Grid>
+
+      {/* 백테스트 */}
+      <Card>
+        <VStack gap={4}>
+          <VStack gap={1}>
+            <Heading level={3}>백테스트: 그때 데이터로 정했다면</Heading>
+            <Text type="supporting" color="secondary">
+              {bt.from} ~ {bt.to}, {bt.n}건. 공고마다 그 이전 기록만 보고 값을 정한 뒤, 실제 결과에 대입했어요. 앞 절반/뒤 절반 경계는 {bt.splitDate}.
+            </Text>
+          </VStack>
+          <Grid columns={{minWidth: 180, max: 3, repeat: 'fit'}} gap={4}>
+            <Metric label="고객 A 실제 선택" value={`1순위 ${bt.actual}건`} hint={`하한 미달 ${bt.actualUnder}건`} />
+            <Metric label="빈 구간 찾기(데이터 방식)" value={`1순위 ${bt.best}건`} hint={`실제 대비 ${sign(bt.bestVsActual.diff)}건 · 앞 ${sign(bt.bestVsActual.first)} / 뒤 ${sign(bt.bestVsActual.second)}`} />
+            <Metric label="과거 평균 사정률로 쓰기" value={`1순위 ${bt.mean}건`} hint="흔한 방식(비교용)" />
+          </Grid>
+          <ResponsiveContainer width="100%" height={240}>
+            <BarChart data={bt.years} margin={{top: 8, right: 8, left: 0, bottom: 4}}>
+              <CartesianGrid vertical={false} stroke={C.grid} />
+              <XAxis dataKey="year" tick={tick} axisLine={false} tickLine={false} />
+              <YAxis tick={tick} axisLine={false} tickLine={false} width={28} />
+              <Tooltip />
+              <Legend wrapperStyle={legend} />
+              <Bar isAnimationActive={false} dataKey="actual" fill={C.orange} name="고객 A 실제" radius={[3, 3, 0, 0]} />
+              <Bar isAnimationActive={false} dataKey="best" fill={C.blue} name="빈 구간 찾기" radius={[3, 3, 0, 0]} />
+              <Bar isAnimationActive={false} dataKey="mean" fill={C.teal} name="평균 사정률" radius={[3, 3, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+          {isLocal ? (
+            <Banner
+              status="warning"
+              title="효과 판정: 확인 못 함"
+              description={`전체로는 실제보다 ${bt.bestVsActual.diff}건 많지만(95% 구간 ${sign(bt.bestVsActual.lo)}~${sign(bt.bestVsActual.hi)}), 2023년까지(앞 절반 ${sign(bt.bestVsActual.first)}건)에서 나온 차이예요. 판이 바뀐 뒤 절반에서는 오히려 ${Math.abs(bt.bestVsActual.second)}건 적었어요. 지금 시장에서는 이 방식이 고객 A의 감을 이긴다고 말할 수 없어요.`}
+            />
+          ) : (
+            <Banner
+              status="error"
+              title="효과 판정: 없음"
+              description={`데이터 방식이 실제 선택보다 ${Math.abs(bt.bestVsActual.diff)}건 적었고(95% 구간 ${sign(bt.bestVsActual.lo)}~${sign(bt.bestVsActual.hi)}), 앞/뒤 절반 모두 마찬가지예요(${sign(bt.bestVsActual.first)}/${sign(bt.bestVsActual.second)}). 참여 업체가 많아 이길 수 있는 폭이 ${r.gapMedian}%p밖에 안 돼서 사실상 추첨에 가까워요.`}
+            />
+          )}
+        </VStack>
+      </Card>
+    </VStack>
+  );
+}
 
 export default function App() {
   const isMobile = useMediaQuery('(max-width: 768px)', true);
-  const valid = S.win + S.lose;
-  const agencyCols: TableColumn<Agency>[] = [
-    {key: 'name', header: '발주처'},
-    {key: 'total', header: '투찰', renderCell: a => <Text type="body">{a.total}건</Text>},
-    {key: 'win', header: '1순위', renderCell: a => <Text type="body">{a.win}건 ({a.winRate}%)</Text>},
-    {
-      key: 'under',
-      header: '하한 미달',
-      renderCell: a => (
-        <HStack gap={2} vAlign="center">
-          <Text type="body">
-            {a.under}건 ({a.underRate}%)
-          </Text>
-          {a.underRate >= 40 && <Badge variant="warning" label="높음" />}
-        </HStack>
-      ),
-    },
-  ];
+  const [rid, setRid] = useState<string>('local');
+  const region = REGIONS.find(r => r.id === rid)!;
 
   const body = (
     <VStack gap={8}>
-      {/* 표지 */}
       <VStack gap={3}>
         <Text type="supporting" color="secondary">
-          입찰가 어드바이저 · 데이터 리포트 #1 · 2026-11-24
+          입찰가 어드바이저 · 데이터 리포트 #2 · 2026-11-24
         </Text>
-        <Heading level={1}>고객 A 투찰 기록 10년 분석</Heading>
+        <Heading level={1}>고객 A 투찰 기록: 지역별 분석과 검증</Heading>
         <Text type="body" color="secondary">
-          고객 A(해양환경 분야)가 {S.from.slice(0, 7)}부터 {S.to.slice(0, 7)}까지 실제로 낸 투찰 {S.total}건을 모아 정리했어요.
-          모두 용역이고 적격심사(하한율 이상 금액 중 가장 낮은 업체가 1순위) 방식이에요.
+          고객 A(해양환경 분야)가 {S.from.slice(0, 7)}부터 {S.to.slice(0, 7)}까지 낸 투찰 {S.total}건을 두 시장으로 나눠 봤어요. 우리 군 업체만 들어오는
+          관내 입찰과, 도 안 업체 누구나 들어오는 지역입찰은 경쟁 구조가 완전히 달라서 전략도 따로 봐야 해요.
         </Text>
         <Banner
           status="info"
           title="실제 기록을 익명으로 정리한 페이지예요"
-          description="업체·발주처 이름은 '경쟁사 A', '발주처 B'처럼 바꿨어요. 1순위는 개찰 1등이라 최종 낙찰과 다를 수 있고, 이 페이지는 현재 상태를 보는 것이지 어떤 방법의 효과를 증명하는 자료가 아니에요."
+          description="업체·발주처·지명은 빼고 '경쟁사 A'처럼 바꿨어요. 1순위는 개찰 1등이라 적격심사 결과에 따라 최종 낙찰과 다를 수 있어요. 낙찰을 보장하는 방법은 없어요."
         />
       </VStack>
 
-      <Grid columns={{minWidth: 160, max: 4, repeat: 'fit'}} gap={4}>
-        <Metric label="분석한 투찰" value={`${S.total}건`} hint={`${S.from} ~ ${S.to}`} />
-        <Metric label="1순위" value={`${S.win}건`} hint={`전체의 ${pct(S.win, S.total)}`} />
-        <Metric label="하한 미달로 탈락" value={`${S.under}건`} hint={`전체의 ${pct(S.under, S.total)}`} />
-        <Metric label="주력 발주처 비중" value={`${S.mainShare}%`} hint="한 곳에 투찰이 몰려 있음" />
-      </Grid>
-
-      {/* 핵심 요약 */}
       <Card>
         <VStack gap={3}>
-          <Heading level={3}>한눈에 보기</Heading>
+          <Heading level={3}>결론</Heading>
           <List density="compact" listStyle="disc">
             <ListItem
               label={
                 <>
-                  <B>세 번 중 한 번은 하한 미달로 자동 탈락</B>했어요({pct(S.under, S.total)}). 최근 3년은 37~41%로 더 늘었어요.
+                  <B>관내 입찰({local.biddersMedian}곳 경쟁)</B>은 이길 수 있는 폭이 넓고(보통 {local.gapMedian.toFixed(2)}%p) 1순위 비율도 {pct(local.win, local.total)}로 높아요. 다만{' '}
+                  <B>2024년부터 경쟁 업체들이 실제 사정률 쪽으로 바짝 붙어</B> 빈자리가 거의 사라졌어요.
                 </>
               }
             />
             <ListItem
               label={
                 <>
-                  실제 사정률보다 낮게 쓴 {S.ownBelowActual}건은 <B>{S.underWhenBelow}건 전부 하한 미달</B>이었어요. 구조상 피할 수 없는 결과예요.
+                  <B>지역입찰(보통 {wide.biddersMedian}곳, 많으면 30곳 이상)</B>은 이길 수 있는 폭이 {wide.gapMedian}%p로 좁아 사실상 추첨이에요. 1순위 비율 {pct(wide.win, wide.total)}, 하한 미달{' '}
+                  {pct(wide.under, wide.total)}.
                 </>
               }
             />
             <ListItem
               label={
                 <>
-                  써낸 사정률은 실제보다 <B>두 배 넓게 흩어져</B> 있어요(표준편차 {S.ownSd} vs 실제 {S.actualSd}).
+                  데이터 방식(빈 구간 찾기)은 <B>두 시장 모두 지금은 고객 A 실제 선택보다 낫다고 확인되지 않았어요.</B> 관내는 2023년까지만 크게 앞섰고(앞 절반 {sign(local.backtest.bestVsActual.first)}건), 최근에는{' '}
+                  {sign(local.backtest.bestVsActual.second)}건. 지역입찰은 내내 뒤졌어요({sign(wide.backtest.bestVsActual.diff)}건).
                 </>
               }
             />
             <ListItem
               label={
                 <>
-                  하한을 넘긴 {valid}건만 보면 1순위 비율은 {pct(S.win, valid)}예요. 1순위를 뺏긴 건의 {S.top3Share}%는 <B>같은 세 업체</B>에게 졌어요.
+                  실제보다 낮게 쓴 {S.under}건은 {S.underAllBelow ? '전부' : '대부분'} 하한 미달이었어요. 구조상 피할 수 없는 결과라, 하한 미달 자체는 '공격적으로 쓴 대가'로 봐야 해요.
                 </>
               }
             />
@@ -188,152 +302,43 @@ export default function App() {
 
       <Divider />
 
-      {/* 1. 연도별 */}
       <VStack gap={4}>
-        <SectionHead n="1" title="연도별 결과" desc="투찰 건수는 꾸준히 늘었는데, 1순위 비율은 그대로이고 하한 미달 비율이 올라가고 있어요." />
-        <ChartCard title="연도별 투찰 결과" desc="막대 = 건수(1순위·탈락·하한 미달), 선 = 하한 미달 비율(오른쪽 축). 2026년은 11월 24일까지.">
-          <ResponsiveContainer width="100%" height={300}>
-            <ComposedChart data={[...YEARS]} margin={{top: 8, right: 8, left: 0, bottom: 4}}>
-              <CartesianGrid vertical={false} stroke={C.grid} />
-              <XAxis dataKey="year" tick={tick} axisLine={false} tickLine={false} />
-              <YAxis yAxisId="n" tick={tick} axisLine={false} tickLine={false} width={32} />
-              <YAxis yAxisId="r" orientation="right" tick={tick} axisLine={false} tickLine={false} width={40} unit="%" domain={[0, 80]} />
-              <Tooltip />
-              <Legend wrapperStyle={{fontSize: 'var(--font-size-sm)'}} />
-              <Bar isAnimationActive={false} yAxisId="n" dataKey="win" stackId="a" fill={C.blue} name="1순위" />
-              <Bar isAnimationActive={false} yAxisId="n" dataKey="lose" stackId="a" fill={C.gray} name="탈락(순위 밀림)" />
-              <Bar isAnimationActive={false} yAxisId="n" dataKey="under" stackId="a" fill={C.orange} name="하한 미달" radius={[4, 4, 0, 0]} />
-              <Line isAnimationActive={false} yAxisId="r" type="monotone" dataKey="underRate" stroke={C.pink} strokeWidth={2} dot name="하한 미달 비율" />
-            </ComposedChart>
-          </ResponsiveContainer>
-        </ChartCard>
+        <SectionHead n="1" title="시장별 상세" desc="위에서 시장을 고르면 아래 숫자·차트가 바뀌어요." />
+        <SegmentedControl label="시장" value={rid} onChange={v => setRid(v as string)} layout={isMobile ? 'fill' : undefined}>
+          {REGIONS.map(r => (
+            <SegmentedControlItem key={r.id} value={r.id} label={`${r.label} · ${r.total}건`} />
+          ))}
+        </SegmentedControl>
+        <Text type="supporting" color="secondary">
+          {region.label}: {region.desc}
+        </Text>
+        <RegionView r={region} />
       </VStack>
 
-      {/* 2. 사정률 */}
       <VStack gap={4}>
-        <SectionHead
-          n="2"
-          title="사정률: 실제 vs 써낸 값"
-          desc="사정률은 '예정가격이 기초금액의 몇 %로 정해졌나'예요. 예정가격은 추첨이라 미리 알 수 없고, 업체는 이 값을 예상해서 투찰 금액을 정해요."
-        />
-        <Grid columns={{minWidth: 320, max: 2, repeat: 'fit'}} gap={4}>
-          <ChartCard
-            title="사정률 분포"
-            desc={`파랑 = 실제로 나온 사정률(평균 ${S.actualMean}%), 주황 = 고객 A가 써낸 사정률(평균 ${S.ownMean}%). 0.25%p 단위, 양 끝은 묶음.`}>
-            <ResponsiveContainer width="100%" height={260}>
-              <BarChart data={[...SAJEONG]} margin={{top: 4, right: 8, left: 0, bottom: 4}} barGap={0}>
-                <CartesianGrid vertical={false} stroke={C.grid} />
-                <XAxis dataKey="bin" tick={tick} axisLine={false} tickLine={false} interval={3} />
-                <YAxis tick={tick} axisLine={false} tickLine={false} width={32} />
-                <Tooltip />
-                <Legend wrapperStyle={{fontSize: 'var(--font-size-sm)'}} />
-                <Bar isAnimationActive={false} dataKey="actual" fill={C.blue} name="실제" radius={[3, 3, 0, 0]} />
-                <Bar isAnimationActive={false} dataKey="own" fill={C.orange} name="써낸 값" radius={[3, 3, 0, 0]} />
-                <ReferenceLine x="100.00" stroke={C.tick} strokeDasharray="4 4" />
-              </BarChart>
-            </ResponsiveContainer>
-          </ChartCard>
-          <ChartCard
-            title="써낸 값 − 실제 값에 따른 결과"
-            desc="0보다 왼쪽(실제보다 낮게 씀)은 전부 하한 미달. 0 바로 오른쪽이 1순위가 나오는 자리이고, 멀어질수록 순위에서 밀려요.">
-            <ResponsiveContainer width="100%" height={260}>
-              <BarChart data={[...DEVIATION]} margin={{top: 20, right: 8, left: 0, bottom: 4}}>
-                <CartesianGrid vertical={false} stroke={C.grid} />
-                <XAxis dataKey="bin" tick={tick} axisLine={false} tickLine={false} interval={3} />
-                <YAxis tick={tick} axisLine={false} tickLine={false} width={32} />
-                <Tooltip />
-                <Legend wrapperStyle={{fontSize: 'var(--font-size-sm)'}} />
-                <Bar isAnimationActive={false} dataKey="under" stackId="d" fill={C.orange} name="하한 미달" />
-                <Bar isAnimationActive={false} dataKey="lose" stackId="d" fill={C.gray} name="탈락" />
-                <Bar isAnimationActive={false} dataKey="win" stackId="d" fill={C.blue} name="1순위" radius={[3, 3, 0, 0]} />
-                <ReferenceLine x="+0.00" stroke={C.purple} label={{value: '실제 = 써낸 값', fill: C.purple, fontSize: 12, position: 'top'}} />
-              </BarChart>
-            </ResponsiveContainer>
-          </ChartCard>
-        </Grid>
+        <SectionHead n="2" title="어떻게 계산했나" />
         <Card>
-          <VStack gap={2}>
-            <Heading level={4}>읽는 법</Heading>
-            <List density="compact" listStyle="disc">
-              <ListItem label={<>하한 미달 건은 평균 {Math.abs(S.devUnder)}%p 낮게, 1순위 건은 평균 {S.devWin}%p 높게, 순위에서 밀린 건은 평균 {S.devLose}%p 높게 썼어요.</>} />
-              <ListItem label={<>즉 1순위는 '실제보다 조금만 높게' 쓴 자리에서 나와요. 너무 낮으면 탈락, 너무 높으면 다른 업체에 밀려요.</>} />
-              <ListItem
-                label={
-                  <>
-                    실제 사정률은 늘 99~100.5% 근처라 좁은데(표준편차 {S.actualSd}), 써낸 값은 {S.ownSd}만큼 퍼져 있어요(최근 3년 {S.recentOwnSd}). 이 폭을 데이터로 좁히는 게
-                    첫 번째 개선 지점이에요.
-                  </>
-                }
-              />
-            </List>
-          </VStack>
+          <List density="compact" listStyle="disc">
+            <ListItem label={<>투찰금액을 '기초금액 × 하한율의 몇 %로 썼나'로 바꾸면, 1순위 = 실제 사정률 이상인 값 중 가장 작은 값을 쓴 업체예요.</>} />
+            <ListItem label={<>그래서 다른 값을 썼을 때 1순위였는지는 '실제 사정률 이상, 바로 위 업체 값 미만'인지로 판정할 수 있어요. 바로 위 업체 값은 기록의 1순위 값이나 공개 개찰 결과(공공데이터포털)에서 가져왔어요.</>} />
+            <ListItem label={<>{`이 판정을 공개 개찰 결과 전체 투찰 목록과 맞춰 보니 ${S.checked} 일치했어요.`}</>} />
+            <ListItem label={<>빈 구간 찾기 = 같은 시장 직전 기록(최대 200건)에서 '그 값이었으면 1순위였을 횟수'가 가장 많은 값을 고르는 방식이에요.</>} />
+            <ListItem label={<>가정: 고객 A가 값을 바꿔도 다른 업체 투찰은 그대로, 고객 A가 고른 추첨 번호의 영향은 무시, 적격심사 점수는 무시.</>} />
+          </List>
         </Card>
       </VStack>
 
-      {/* 3. 경쟁사 */}
       <VStack gap={4}>
-        <SectionHead n="3" title="1순위를 가져간 업체" desc="고객 A가 1순위가 아니었던 건에서 1순위를 한 업체(사업자번호 기준). 소수 업체가 반복해서 나와요." />
-        <Grid columns={{minWidth: 320, max: 2, repeat: 'fit'}} gap={4}>
-          <ChartCard title="고객 A를 이긴 횟수 상위 8곳" desc={`나머지 업체들 합계 ${S.othersBeat}건. 상위 3곳이 ${S.top3Share}%.`}>
-            <ResponsiveContainer width="100%" height={260}>
-              <BarChart data={[...COMPETITORS]} layout="vertical" margin={{top: 4, right: 16, left: 8, bottom: 4}}>
-                <CartesianGrid horizontal={false} stroke={C.grid} />
-                <XAxis type="number" tick={tick} axisLine={false} tickLine={false} />
-                <YAxis type="category" dataKey="name" tick={tick} axisLine={false} tickLine={false} width={72} />
-                <Tooltip />
-                <Bar isAnimationActive={false} dataKey="beat" fill={C.blue} name="이긴 횟수" radius={[0, 4, 4, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </ChartCard>
-          <Card>
-            <VStack gap={3}>
-              <Heading level={4}>무엇을 뜻하나</Heading>
-              <List density="compact" listStyle="disc">
-                <ListItem label={<>경쟁사 A·B·C가 1순위를 할 때 쓴 사정률 평균은 {COMPETITORS.slice(0, 3).map(c => `${c.avgTop}%`).join(' · ')}예요.</>} />
-                <ListItem label={<>상대가 몇 곳으로 고정돼 있어서, 이 업체들이 주로 쓰는 구간을 알면 '겹치지 않는 자리'를 고를 수 있어요.</>} />
-                <ListItem label={<>이 업체들의 투찰 습관은 공개 개찰 결과(공공데이터포털)로 따로 계산할 수 있어요. 다음 리포트에서 다룰게요.</>} />
-              </List>
-            </VStack>
-          </Card>
-        </Grid>
-      </VStack>
-
-      {/* 4. 발주처 */}
-      <VStack gap={4}>
-        <SectionHead n="4" title="발주처별 성적" desc="투찰이 많은 발주처 8곳. 주력 발주처 밖에서는 1순위 비율이 낮고 하한 미달 비율이 높아요." />
-        {isMobile ? (
-          <List>
-            {AGENCIES.map(a => (
-              <ListItem
-                key={a.id}
-                label={a.name}
-                description={
-                  <Text type="supporting" color="secondary">
-                    {a.total}건 · 1순위 {a.win}({a.winRate}%) · 하한 미달 {a.under}({a.underRate}%)
-                  </Text>
-                }
-              />
-            ))}
-          </List>
-        ) : (
-          <Card>
-            <Table<Agency> data={[...AGENCIES]} columns={agencyCols} idKey="id" density="compact" verticalAlign="middle" />
-          </Card>
-        )}
-      </VStack>
-
-      {/* 5. 다음 */}
-      <VStack gap={4}>
-        <SectionHead n="5" title="다음 단계" />
+        <SectionHead n="3" title="다음 단계 제안" />
         <Card>
           <List density="compact" listStyle="decimal">
-            <ListItem label="이 기록을 공개 개찰 결과와 합쳐, 공고마다 '그때 데이터로 정했다면 몇 등이었을지'를 다시 계산(백테스트)해요." />
-            <ListItem label="비교 기준은 무작위가 아니라 '과거 평균 사정률로 썼을 때'예요. 그보다 1순위가 확실히 늘 때만 효과가 있다고 봐요." />
-            <ListItem label="효과가 확인되지 않으면 개발을 멈추는 게 맞아요. 결과는 다음 리포트로 공유할게요." />
+            <ListItem label={<>관내 입찰: 경쟁 업체가 3~4곳으로 고정이라, 업체별로 '요즘 어디에 쓰는지'를 따로 추적하는 방식(업체별 습관 모델)을 한 번 더 검증해요. 이것도 최근 기간에서 고객 A 실제 선택을 못 이기면 개발은 멈추는 게 맞아요.</>} />
+            <ListItem label={<>지역입찰: 값을 고르는 도구는 효과가 없다고 보고, 공고 찾기·마감 알림·투찰 기록 정리 같은 시간 절약 쪽만 남겨요.</>} />
+            <ListItem label={<>새 기록은 매일 공개 개찰 결과로 쌓여서, 판이 다시 바뀌는지도 계속 볼 수 있어요.</>} />
           </List>
         </Card>
         <Text type="supporting" color="secondary">
-          데이터: 고객 A의 입찰정보 서비스 투찰 기록(본인 계정 내보내기) · 사정률 = 예정가격 ÷ 기초금액 · 하한 미달 = 낙찰하한가보다 낮은 금액이라 자동 탈락
+          데이터: 고객 A 본인 계정의 입찰정보 서비스 투찰 기록 내보내기 + 공공데이터포털 조달청 나라장터 낙찰정보 · 사정률 = 예정가격 ÷ 기초금액
         </Text>
       </VStack>
     </VStack>
@@ -345,7 +350,7 @@ export default function App() {
       content={
         <LayoutContent role="main" isScrollable={false} padding={isMobile ? 4 : 8}>
           <Center axis="horizontal">
-            <Section variant="transparent" width="100%" maxWidth={1040} padding={0}>
+            <Section variant="transparent" width="100%" maxWidth={1080} padding={0}>
               {body}
             </Section>
           </Center>
